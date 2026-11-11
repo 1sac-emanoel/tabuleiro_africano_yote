@@ -15,7 +15,7 @@ export class PostgresGameRepository implements IGameRepository {
   }
 
   async salvarPartida(estado: GameStateSnapshot): Promise<void> {
-    // 1. Salva no fallback local imediatamente (Garante resiliência)
+    // 1. Salva no fallback local imediatamente
     localStorage.setItem(this.LOCAL_STORAGE_KEY, JSON.stringify(estado));
 
     // 2. Tenta salvar no PostgreSQL via Supabase (JSONB)
@@ -42,12 +42,60 @@ export class PostgresGameRepository implements IGameRepository {
   }
 
   async carregarUltimaPartidaAtiva(): Promise<GameStateSnapshot | null> {
+    // 1. Prioriza buscar da Nuvem (PostgreSQL) se estiver online
+    if (isPostgresConfigured() && supabaseClient) {
+      const { data, error } = await supabaseClient
+        .from('partidas_ativas')
+        .select('*')
+        .order('atualizado_em', { ascending: false })
+        .limit(1)
+        .single();
+        
+      if (!error && data) {
+        return this.mapRowToSnapshot(data);
+      }
+    }
+
+    //Se estiver sem internet ou o banco falhar, busca do cache local
     const localData = localStorage.getItem(this.LOCAL_STORAGE_KEY);
     if (localData) return JSON.parse(localData) as GameStateSnapshot;
-    return null; // Na Q3 faremos o SELECT no Supabase caso o local esteja limpo
+    
+    return null;
   }
 
-  async carregarPartida(id: string): Promise<GameStateSnapshot | null> { return null; }
+  async carregarPartida(id: string): Promise<GameStateSnapshot | null> {
+    if (isPostgresConfigured() && supabaseClient) {
+      const { data, error } = await supabaseClient
+        .from('partidas_ativas')
+        .select('*')
+        .eq('id', id)
+        .single();
+        
+      if (!error && data) {
+        return this.mapRowToSnapshot(data);
+      }
+    }
+    return null;
+  }
+
+  // metodo auxiliar privado para converter as colunas do SQL para o DTO do Isac
+  private mapRowToSnapshot(row: any): GameStateSnapshot {
+    return {
+      id: row.id,
+      currentTurn: row.turno_atual,
+      phase: row.fase_turno,
+      whiteReserve: row.reserva_brancas,
+      blackReserve: row.reserva_pretas,
+      whiteCaptured: row.capturas_brancas,
+      blackCaptured: row.capturas_pretas,
+      board: JsonbBoardSerializer.fromJsonb(row.estado_tabuleiro),
+      winner: row.vencedor,
+      winReason: row.motivo_vitoria,
+      turnCount: row.contagem_turnos,
+      updatedAt: row.atualizado_em,
+    };
+  }
+
   async deletarPartidaAtiva(id: string): Promise<void> { localStorage.removeItem(this.LOCAL_STORAGE_KEY); }
   async registrarHistorico(registro: MatchHistoryRecord): Promise<void> {}
   async listarHistorico(): Promise<MatchHistoryRecord[]> { return []; }
