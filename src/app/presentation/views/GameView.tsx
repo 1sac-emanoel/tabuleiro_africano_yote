@@ -28,11 +28,7 @@ export const GameView: React.FC = () => {
       )}
 
       {/* Orquestração do Tabuleiro */}
-      <YoteBoard 
-        board={gameState.tabuleiro}
-        selectedPos={gameState.casaSelecionada}
-        onCellClick={handleCellClick}
-      />
+      <YoteBoard gameState={gameState} onCellClick={handleCellClick} />
     </div>
   );
 };
