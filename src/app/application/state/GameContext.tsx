@@ -3,6 +3,8 @@ import type { GameViewModelDto } from '../dtos/GameDtos';
 import { GameState } from '../../domain/entities/GameState';
 import { ExecutarMovimentoUseCase } from '../usecases/ExecutarMovimentoUseCase';
 import { gameRepository } from '../../infrastructure/DatabaseProvider';
+import { Position } from '../../domain/value_objects/Position';
+import { YoteMoveValidator } from '../../domain/rules/YoteMoveValidator';
 
 interface GameContextProps {
   gameState: GameViewModelDto;
@@ -51,11 +53,64 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const handleCellClick = async (row: number, col: number) => {
-    // Se não tem nada selecionado, seleciona a casa
-    if (!gameState.casaSelecionada) {
+    // Bloqueia cliques se o jogo estiver em processamento ou no fim
+    if (gameState.faseTurno === 'GAME_OVER') return;
+
+    const clickedPos = new Position(row, col);
+    const clickedPiece = domainState.getCell(clickedPos);
+    
+    // ==========================================
+    // CENA 1: INSERÇÃO (Clicou em casa vazia e não há peça selecionada)
+    // ==========================================
+    if (!gameState.casaSelecionada && !clickedPiece) {
+      try {
+        YoteMoveValidator.validateInsertion(domainState, clickedPos, domainState.currentTurn);
+        domainState.inserirPeca(clickedPos);
+        
+        atualizaView();
+        gameRepository.salvarPartida(domainState.toSnapshot('partida-padrao')).catch(console.error);
+      } catch (error: any) {
+        atualizaView(error.message);
+      }
+      return;
+    }
+
+    // ==========================================
+    // CENA 2: SELEÇÃO DE PEÇA
+    // ==========================================
+    if (!gameState.casaSelecionada && clickedPiece) {
+      if (clickedPiece.color !== domainState.currentTurn) {
+        atualizaView('Você só pode selecionar as suas próprias peças.');
+        return;
+      }
       setGameState(prev => ({ ...prev, casaSelecionada: { row, col }, erroAtual: null }));
       return;
     }
+
+    // ==========================================
+    // CENA 3: TENTATIVA DE MOVIMENTO
+    // ==========================================
+    if (gameState.casaSelecionada) {
+      // Se clicou na própria peça de novo, ele DESELECCIONA
+      if (gameState.casaSelecionada.row === row && gameState.casaSelecionada.col === col) {
+        setGameState(prev => ({ ...prev, casaSelecionada: null, erroAtual: null }));
+        return;
+      }
+
+      const from = gameState.casaSelecionada;
+      const resultado = await executarMovimento.execute(domainState, from.row, from.col, row, col);
+
+      if (resultado.sucesso) {
+        domainState.executarMovimento(new Position(from.row, from.col), clickedPos);
+        setGameState(prev => ({ ...prev, casaSelecionada: null }));
+        atualizaView();
+        gameRepository.salvarPartida(domainState.toSnapshot('partida-padrao')).catch(console.error);
+      } else {
+        setGameState(prev => ({ ...prev, casaSelecionada: null }));
+        atualizaView(resultado.mensagemErro);
+      }
+    }
+  };
 
     // Se já tinha selecionado, tenta mover!
     const from = gameState.casaSelecionada;
