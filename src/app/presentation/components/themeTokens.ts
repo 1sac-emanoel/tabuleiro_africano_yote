@@ -3,8 +3,9 @@
  * (Madeira Acácia, Areia do Sahel, Sementes de Baobá e Ébano), garantindo alto contraste 
  */
 export const YOTE_THEME = {
-  boardContainer: 'bg-amber-950 border-4 border-amber-800 shadow-2xl rounded-2xl p-3 sm:p-5',
-  boardGrid: 'grid grid-cols-6 grid-rows-5 gap-2 sm:gap-3 aspect-[6/5] w-full max-w-2xl mx-auto',
+  boardContainer: 'bg-amber-950 border-4 border-amber-800 shadow-2xl rounded-2xl p-2 sm:p-4',
+  // Tabuleiro expandido para max-w-4xl e gaps reduzidos
+  boardGrid: 'grid grid-cols-6 grid-rows-5 gap-1 sm:gap-2 aspect-[6/5] w-full max-w-4xl mx-auto',
   cellBase: 'relative aspect-square rounded-xl flex items-center justify-center transition-all duration-200 select-none cursor-pointer',
   cellEmpty: 'bg-amber-900/80 hover:bg-amber-800/90 shadow-inner border border-amber-700/40',
   cellSelected: 'ring-4 ring-yellow-400 bg-amber-800 scale-[1.03]',
