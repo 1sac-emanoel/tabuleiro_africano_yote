@@ -97,6 +97,24 @@ export class PostgresGameRepository implements IGameRepository {
   }
 
   async deletarPartidaAtiva(id: string): Promise<void> { localStorage.removeItem(this.LOCAL_STORAGE_KEY); }
-  async registrarHistorico(registro: MatchHistoryRecord): Promise<void> {}
+
+  async registrarHistorico(registro: MatchHistoryRecord): Promise<void> {
+    if (isPostgresConfigured() && supabaseClient) {
+      const { error } = await supabaseClient
+        .from('historico_partidas')
+        .insert({
+          vencedor: registro.winner,
+          motivo_vitoria: registro.winReason,
+          total_turnos: registro.totalTurns,
+          finalizado_em: new Date().toISOString()
+        });
+        
+      if (error) console.error('Erro ao registrar histórico no PostgreSQL:', error);
+    }
+    
+    // Limpa a partida atual do LocalStorage pois o jogo acabou
+    localStorage.removeItem(this.LOCAL_STORAGE_KEY);
+  }
+
   async listarHistorico(): Promise<MatchHistoryRecord[]> { return []; }
 }
