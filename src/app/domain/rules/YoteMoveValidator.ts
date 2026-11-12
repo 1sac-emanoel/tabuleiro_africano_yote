@@ -62,4 +62,18 @@ export class YoteMoveValidator {
       throw new DomainError('Você só pode saltar sobre uma peça do adversário.', 'INVALID_CAPTURE_TARGET');
     }
   }
+
+  // para insercao de pecas e reserva 
+  public static validateInsertion(state: GameState, to: Position, player: PieceColor): void {
+    if (state.currentTurn !== player) {
+      throw new DomainError('Não é o seu turno.', 'WRONG_TURN');
+    }
+    if (!state.isCellEmpty(to)) {
+      throw new DomainError('Você só pode inserir uma peça em uma casa vazia.', 'CELL_OCCUPIED');
+    }
+    const reserve = player === 'WHITE' ? state.whiteReserve : state.blackReserve;
+    if (reserve <= 0) {
+      throw new DomainError('Você não tem mais peças na reserva para inserir.', 'NO_RESERVE');
+    }
+  }
 }

@@ -100,5 +100,27 @@ export class GameState {
       updatedAt: new Date().toISOString(),
     };
   }
+
+  /**
+   * Remove uma peça da reserva e a insere no tabuleiro.
+  */
+  public inserirPeca(pos: Position): void {
+    // 1. Coloca a peça na matriz
+    this.board[pos.row][pos.col] = {
+      color: this.currentTurn,
+      row: pos.row,
+      col: pos.col,
+    };
+    
+    // 2. Desconta da reserva do jogador atual
+    if (this.currentTurn === 'WHITE') {
+      this.whiteReserve -= 1;
+    } else {
+      this.blackReserve -= 1;
+    }
+    
+    // 3. Passa a vez
+    this.currentTurn = this.currentTurn === 'WHITE' ? 'BLACK' : 'WHITE';
+  }
   
 }
