@@ -76,4 +76,23 @@ export class YoteMoveValidator {
       throw new DomainError('Você não tem mais peças na reserva para inserir.', 'NO_RESERVE');
     }
   }
+
+  /**
+   * Valida se a peça clicada pode ser confiscada como bonus da Captura Dupla
+   * Regra: Tem que ser uma peca do adversario ja no tabuleiro
+   */
+  public static validateBonusCapture(state: GameState, target: Position, player: PieceColor): void {
+    if (state.phase !== 'SELECT_BONUS_CAPTURE') {
+      throw new DomainError('O jogo não está na fase de captura bônus.', 'WRONG_PHASE');
+    }
+    
+    const piece = state.getCell(target);
+    if (!piece) {
+      throw new DomainError('Você precisa clicar em uma peça do adversário, não em uma casa vazia.', 'EMPTY_TARGET');
+    }
+    
+    if (piece.color === player) {
+      throw new DomainError('Você não pode confiscar sua própria peça!', 'INVALID_TARGET_COLOR');
+    }
+  }
 }

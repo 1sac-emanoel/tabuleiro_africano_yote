@@ -14,6 +14,9 @@ export class GameState {
   public blackReserve: number;
   public whiteCaptured: number;
   public blackCaptured: number;
+  public winner: GameStateSnapshot['winner'];
+  public winReason: WinReason;
+  public turnCount: number;
 
   constructor(snapshot?: GameStateSnapshot) {
     if (snapshot) {
@@ -24,6 +27,9 @@ export class GameState {
       this.blackReserve = snapshot.blackReserve;
       this.whiteCaptured = snapshot.whiteCaptured;
       this.blackCaptured = snapshot.blackCaptured;
+      this.winner = snapshot.winner;
+      this.winReason = snapshot.winReason;
+      this.turnCount = snapshot.turnCount;
     } else {
       this.board = Array(YOTE_CONSTANTS.ROWS).fill(null).map(() => Array(YOTE_CONSTANTS.COLS).fill(null));
       this.currentTurn = 'WHITE'; // Brancas começam
@@ -32,6 +38,9 @@ export class GameState {
       this.blackReserve = YOTE_CONSTANTS.INITIAL_PIECES_PER_PLAYER;
       this.whiteCaptured = 0;
       this.blackCaptured = 0;
+      this.winner = null;
+      this.winReason = null;
+      this.turnCount = 1;
     }
   }
 
@@ -94,9 +103,9 @@ export class GameState {
       blackReserve: this.blackReserve,
       whiteCaptured: this.whiteCaptured,
       blackCaptured: this.blackCaptured,
-      winner: null,
-      winReason: null,
-      turnCount: 1, // Lógica de incremento virá na finalização
+      winner: this.winner,
+      winReason: this.winReason,
+      turnCount: this.turnCount,
       updatedAt: new Date().toISOString(),
     };
   }
@@ -123,4 +132,32 @@ export class GameState {
     this.currentTurn = this.currentTurn === 'WHITE' ? 'BLACK' : 'WHITE';
   }
   
+  /**
+   * remove a peça bonus escolhida do tabuleiro e checa Fim de Jogo[cite: 1, 2]
+   */
+  public removerPecaBonus(pos: Position): void {
+    this.board[pos.row][pos.col] = null;
+    
+    if (this.currentTurn === 'WHITE') {
+      this.whiteCaptured += 1;
+    } else {
+      this.blackCaptured += 1;
+    }
+
+    // Checa Condição de Vitória por Eliminação (12 peças capturadas)[cite: 1]
+    if (this.whiteCaptured === 12) {
+      this.phase = 'GAME_OVER';
+      this.winner = 'WHITE';
+      this.winReason = 'ELIMINATION';
+    } else if (this.blackCaptured === 12) {
+      this.phase = 'GAME_OVER';
+      this.winner = 'BLACK';
+      this.winReason = 'ELIMINATION';
+    } else {
+      // Se o jogo não acabou, passa o turno normalmente!
+      this.phase = 'NORMAL_TURN';
+      this.currentTurn = this.currentTurn === 'WHITE' ? 'BLACK' : 'WHITE';
+      this.turnCount += 1;
+    }
+  }
 }
