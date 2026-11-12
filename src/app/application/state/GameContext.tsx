@@ -58,6 +58,36 @@ export const GameProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const clickedPos = new Position(row, col);
     const clickedPiece = domainState.getCell(clickedPos);
+
+    // ==========================================
+    // CENA 0: CAPTURA BÔNUS (A Regra de Ouro!)
+    // ==========================================
+    if (gameState.faseTurno === 'SELECT_BONUS_CAPTURE') {
+      try {
+        // Valida no Isac
+        YoteMoveValidator.validateBonusCapture(domainState, clickedPos, domainState.currentTurn);
+        
+        // Executa a remoção e passa o turno (ou decreta Vitória) no Isac
+        domainState.removerPecaBonus(clickedPos);
+        
+        atualizaView();
+        gameRepository.salvarPartida(domainState.toSnapshot('partida-padrao')).catch(console.error);
+
+        // A Glenda salva o fim de jogo se alguém ganhou após esse confisco!
+        if (domainState.phase === 'GAME_OVER' && domainState.winner && domainState.winReason) {
+          gameRepository.registrarHistorico({
+            winner: domainState.winner,
+            winReason: domainState.winReason,
+            totalTurns: domainState.turnCount,
+            finishedAt: new Date().toISOString()
+          }).catch(console.error);
+        }
+
+      } catch (error: any) {
+        atualizaView(error.message); // Ex: "Você não pode confiscar sua própria peça"
+      }
+      return; // Interrompe a função aqui. Não faz mais nada neste clique!
+    }
     
     // ==========================================
     // CENA 1: INSERÇÃO (Clicou em casa vazia e não há peça selecionada)
